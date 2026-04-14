@@ -3,7 +3,6 @@ package ingestion.wrapper;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import ingestion.stageHandler.TransactionStage;
-import utils.LoggerUtil;
 
 import java.lang.reflect.Field;
 import java.time.Instant;
@@ -12,16 +11,20 @@ import java.util.Optional;
 
 public class Transaction
 {
-    private long    id;
-    private String  currency;
-    private Instant date;
-    private double  amount;
-    private float   fee;
-    private float   exchangeRate;
+    private final long    id;
+    private final long    positionId;
+    private final String  side;
+    private final String  currency;
+    private final Instant date;
+    private final double  amount;
+    private final float   fee;
+    private final float   exchangeRate;
 
-    public Transaction(long id, String currency, Instant date,
+    public Transaction(long id, long positionId, String side, String currency, Instant date,
                        double amount, float fee, float exchangeRate){
         this.id = id;
+        this.positionId = positionId;
+        this.side = side;
         this.currency = currency;
         this.date = date;
         this.amount = amount;
@@ -33,6 +36,8 @@ public class Transaction
     public String toString() {
         return "Transaction{" +
                 "id=" + id +
+                ", positionId=" + positionId +
+                ", side='" + side + '\'' +
                 ", currency='" + currency + '\'' +
                 ", date=" + date +
                 ", amount=" + amount +
@@ -45,4 +50,23 @@ public class Transaction
         return id;
     }
 
+    public String getSide() {
+        return side;
+    }
+
+    public long getPositionId() {
+        return positionId;
+    }
+
+    public float getExchangeRate() {
+        return exchangeRate;
+    }
+
+    public float getFee() {
+        return fee;
+    }
+
+    public double getAmount() {
+        return amount;
+    }
 }

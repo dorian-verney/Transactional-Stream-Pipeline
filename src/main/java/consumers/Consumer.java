@@ -1,24 +1,34 @@
 package consumers;
 
+import consumers.applications.PnLCalculator;
+import ingestion.Producer;
 import ingestion.wrapper.QueueRequest;
+import utils.LoggerFactory;
+import utils.MetricsLogger;
 
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.atomic.LongAdder;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 public class Consumer implements Runnable
 {
+    private final MetricsLogger metricsLog;
+
     private final BlockingQueue<QueueRequest> queue;
     private final CountDownLatch consumersDone;
-    private LongAdder adder;
+    private final LongAdder adder;
 
-    public Consumer(BlockingQueue<QueueRequest> queue,
+    public Consumer(Logger logger,
+                    BlockingQueue<QueueRequest> queue,
                     CountDownLatch consumersDone,
                     LongAdder adder)
     {
         this.queue = queue;
         this.consumersDone = consumersDone;
         this.adder = adder;
+        this.metricsLog = new MetricsLogger(logger);
     }
 
     @Override
@@ -33,13 +43,12 @@ public class Consumer implements Runnable
                 if (req.isEOF()) break;
 
                 // Simulate a CPU work in ms
-                Thread.sleep(20);
+                PnLCalculator.process(req.getTx());
+                Thread.sleep(5);
 
-
-                if (adder.longValue() % 100 == 0){
-                    double elapseMilli = System.currentTimeMillis() - start;
-                    System.out.format("CONS rate=%.2f req/s \n", (adder.longValue()/elapseMilli)*1000);
-                }
+                metricsLog.logEvery(adder.longValue(), 100, () ->
+                        String.format("CONS rate=%.2f req/s", (double) adder.longValue()/(System.currentTimeMillis() - start) * 1000)
+                );
             }
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();

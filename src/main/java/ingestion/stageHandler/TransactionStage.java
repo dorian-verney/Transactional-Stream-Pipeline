@@ -7,7 +7,7 @@ import java.time.format.DateTimeParseException;
 
 public class TransactionStage extends BaseHandler<JsonNode, Transaction>{
 
-    private static final String[] FIELDS= {"id", "currency", "date", "amount", "fee", "exchangeRate"};
+    private static final String[] FIELDS= {"id", "positionId", "side", "currency", "date", "amount", "fee", "exchangeRate"};
 
     @Override
     public Wrapper<Transaction> execute(Wrapper<JsonNode> input) {
@@ -41,6 +41,8 @@ public class TransactionStage extends BaseHandler<JsonNode, Transaction>{
 
             return new Transaction(
                     node.get("id").asLong(),
+                    node.get("positionId").asLong(),
+                    node.get("side").asText(),
                     node.get("currency").asText(),
                     date,
                     node.get("amount").asDouble(),

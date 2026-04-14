@@ -87,17 +87,55 @@ public class TransactionSource implements Runnable {
     public void stop() { running = false; }
 
     private String generateTransaction(long id) {
-        String[] currencies = {"EUR", "USD", "CHF", "GBP", "JPY"};
-        ThreadLocalRandom rng = ThreadLocalRandom.current();
+        String[] currencies = {"EUR", "USD"};
+        String[] sides = {"BUY", "SELL"};
+        ThreadLocalRandom rand = ThreadLocalRandom.current();
+
+        String side = "BUY";
+        long posId = -1;
+        String curr = "EUR";
+
+        switch ((int) id % 6){
+            case 1:
+                side = "SELL";
+                posId = id-1;
+                break;
+
+            case 2:
+                curr = "USD";
+                break;
+
+            case 4:
+                side = "SELL";
+                posId = id-2;
+                curr = "USD";
+                break;
+
+            case 5:
+                side = "SELL";
+                posId = id-2;
+                break;
+        }
 
         return String.format(
-                "{\"id\":%d,\"currency\":\"%s\",\"date\":\"%s\",\"amount\":%.2f,\"fee\":%.2f,\"exchangeRate\":%.4f}",
+                "{" +
+                "\"id\":%d," +
+                "\"positionId\":%d," +
+                "\"side\":\"%s\"," +
+                "\"currency\":\"%s\"," +
+                "\"date\":\"%s\"," +
+                "\"amount\":%.2f," +
+                "\"fee\":%.2f," +
+                "\"exchangeRate\":%.4f" +
+                "}",
                 id,
-                currencies[rng.nextInt(currencies.length)],
+                posId,
+                side,
+                curr,
                 Instant.now().toString(),
-                rng.nextDouble(100, 10_000),
-                rng.nextDouble(1, 50),
-                rng.nextDouble(0.8, 1.5)
+                rand.nextDouble(100, 10_000),
+                rand.nextDouble(1, 50),
+                rand.nextDouble(0.8, 1.5)
         );
     }
 }

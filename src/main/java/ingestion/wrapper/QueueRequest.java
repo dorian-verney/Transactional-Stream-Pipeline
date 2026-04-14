@@ -12,6 +12,10 @@ public class QueueRequest
         this.tx = tx;
     }
 
+    public Transaction getTx(){
+        return tx;
+    }
+
     public boolean isEOF(){
         return this == EOF;
     }

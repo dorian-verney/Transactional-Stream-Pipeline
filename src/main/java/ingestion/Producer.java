@@ -1,31 +1,39 @@
 package ingestion;
 
 import com.fasterxml.jackson.databind.JsonNode;
+import consumers.applications.PnLCalculator;
 import ingestion.stageHandler.*;
 import ingestion.wrapper.QueueRequest;
 import ingestion.wrapper.Transaction;
 import ingestion.wrapper.Wrapper;
+import utils.LoggerFactory;
+import utils.MetricsLogger;
 
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.logging.*;
 
 public class Producer implements Runnable
 {
+    private static final Logger logger = LoggerFactory.create(Producer.class, "Producer.log");
+    private static final MetricsLogger metricsLog = new MetricsLogger(logger);
+
     private final BlockingQueue<String> rawQueue;
     private final BlockingQueue<QueueRequest> processedQueue;
 
-    private final AtomicBoolean running;
+    private final int processedQueueCapacity;
+
     private final int numConsumers;
 
     public Producer(BlockingQueue<String> rawQueue,
                     BlockingQueue<QueueRequest> processedQueue,
-                    AtomicBoolean running,
+                    int processedQueueCapacity,
                     int numConsumers)
     {
         this.rawQueue = rawQueue;
         this.processedQueue = processedQueue;
-        this.running = running;
+        this.processedQueueCapacity = processedQueueCapacity;
         this.numConsumers = numConsumers;
     }
 
@@ -53,21 +61,22 @@ public class Producer implements Runnable
                 if (isValidRecord(jsonRec, buffer, depth)) {
                     Wrapper<QueueRequest> req = runChain(new Wrapper<>(buffer.toString()));
 
-                    if (!req.isFailed())
-                        if (processedQueue.size() == 1000) IO.println("PROCESSED Q FULL");
+                    if (!req.isFailed()) {
+                        metricsLog.logIf(processedQueue.size() == processedQueueCapacity,
+                                Level.WARNING, "PROCESSED QUEUE full");
 
                         while (!processedQueue.offer(req.getPayload())) {
-                            Thread.sleep(0);
+                            Thread.sleep(1);
                         }
+                    }
                     buffer.setLength(0);
                 }
 
                 nbReq++;
-                if (nbReq % 100 == 0){
-                    double elapseMilli = System.currentTimeMillis() - start;
-                    System.out.format("PROD rate=%.2f req/s \n", (nbReq/elapseMilli)*1000);
-                }
-
+                final double rate = (double) nbReq / (System.currentTimeMillis() - start);
+                metricsLog.logEvery(nbReq, 100, () ->
+                        String.format("PROD rate=%.2f req/s", rate * 1000)
+                );
             }
         } catch (InterruptedException e) {
             throw new RuntimeException(e);
