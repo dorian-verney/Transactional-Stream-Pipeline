@@ -17,11 +17,13 @@ public class LoggerFactory {
             fileHandler.setFormatter(new SimpleFormatter() {
                 @Override
                 public String format(LogRecord record) {
+                    String blank = " ".repeat(7 - record.getLevel().getName().length());
                     long millis = record.getMillis() % 1000;
-                    return String.format("%s: %s:%03d %s - %s%n",
-                            record.getLevel(),
-                            new java.text.SimpleDateFormat("dd.MM.yy HH:mm:ss").format(new java.util.Date(record.getMillis())),
+                    return String.format("[%s] %s,%03d %s"+ blank + " - %s - %s\n",
+                            new java.text.SimpleDateFormat("yy-MM-dd").format(new java.util.Date(record.getMillis())),
+                            new java.text.SimpleDateFormat("HH:mm:ss").format(new java.util.Date(record.getMillis())),
                             millis,
+                            record.getLevel(),
                             record.getSourceClassName(),
 //                            record.getSourceClassName().substring(record.getSourceClassName().lastIndexOf('.') + 1),
                             record.getMessage()
