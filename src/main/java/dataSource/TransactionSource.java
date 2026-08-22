@@ -1,24 +1,26 @@
 package dataSource;
 
+import components.MonitoredQueue;
+
 import java.time.Instant;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.ThreadLocalRandom;
 
 public class TransactionSource implements Runnable {
 
-    private final BlockingQueue<String> rawStream;
+    private final MonitoredQueue<String> rawStream;
     private final int normalRate;   // tx/sec en régime normal
     private int burstRate;    // tx/sec pendant un burst
     private int burstEveryMs; // fréquence des bursts
     private int burstDurationMs;
     private volatile boolean running = true;
 
-    public TransactionSource(BlockingQueue<String> rawStream, int ratePerSecond) {
+    public TransactionSource(MonitoredQueue<String> rawStream, int ratePerSecond) {
         this.rawStream = rawStream;
         this.normalRate = ratePerSecond;
     }
 
-    public TransactionSource(BlockingQueue<String> rawStream, int normalRate,
+    public TransactionSource(MonitoredQueue<String> rawStream, int normalRate,
                              int burstRate, int burstEveryMs, int burstDurationMs) {
         this.rawStream = rawStream;
         this.normalRate = normalRate;

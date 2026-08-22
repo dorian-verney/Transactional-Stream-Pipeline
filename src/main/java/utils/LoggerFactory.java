@@ -1,5 +1,8 @@
 package utils;
 
+import java.time.Instant;
+import java.time.ZoneId;
+import java.time.format.DateTimeFormatter;
 import java.util.logging.FileHandler;
 import java.util.logging.LogRecord;
 import java.util.logging.Logger;
@@ -7,6 +10,8 @@ import java.util.logging.SimpleFormatter;
 
 public class LoggerFactory {
 
+    private static final DateTimeFormatter DATE_FMT =
+            DateTimeFormatter.ofPattern("yy-MM-dd HH:mm:ss").withZone(ZoneId.systemDefault());
 
     public static Logger create(Class<?> clazz, String filename) {
         Logger logger = Logger.getLogger(clazz.getName());
@@ -17,15 +22,16 @@ public class LoggerFactory {
             fileHandler.setFormatter(new SimpleFormatter() {
                 @Override
                 public String format(LogRecord record) {
-                    String blank = " ".repeat(7 - record.getLevel().getName().length());
+                    Instant instant = Instant.ofEpochMilli(record.getMillis());
+                    String timestamp = DATE_FMT.format(instant);
                     long millis = record.getMillis() % 1000;
-                    return String.format("[%s] %s,%03d %s"+ blank + " - %s - %s\n",
-                            new java.text.SimpleDateFormat("yy-MM-dd").format(new java.util.Date(record.getMillis())),
-                            new java.text.SimpleDateFormat("HH:mm:ss").format(new java.util.Date(record.getMillis())),
-                            millis,
-                            record.getLevel(),
-                            record.getSourceClassName(),
-//                            record.getSourceClassName().substring(record.getSourceClassName().lastIndexOf('.') + 1),
+                    String blank = " ".repeat(7 - record.getLevel().getName().length());
+                    String simpleClass = record.getSourceClassName();
+//                            .substring(record.getSourceClassName().lastIndexOf('.') + 1);
+                    return String.format("[%s,%03d] %s%s - %s - %s\n",
+                            timestamp, millis,
+                            record.getLevel(), blank,
+                            simpleClass,
                             record.getMessage()
                     );
                 }

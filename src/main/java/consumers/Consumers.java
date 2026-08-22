@@ -1,38 +1,37 @@
 package consumers;
 
-import ingestion.Producer;
+import components.MetricComputer;
+import components.MonitoredQueue;
 import ingestion.wrapper.QueueRequest;
-import utils.LoggerFactory;
-
-import java.util.List;
-import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.CountDownLatch;
-import java.util.concurrent.atomic.LongAdder;
-import java.util.logging.Logger;
 
 public class Consumers {
 
-    private static final Logger logger = LoggerFactory.create(Consumers.class, "Consumers.log");
+    private final MetricComputer<QueueRequest> metricComputer;
 
     private final int numConsumers;
-    private List<Consumer> consumers;
-    private final BlockingQueue<QueueRequest> processedQueue;
+    private final MonitoredQueue<QueueRequest> processedQueue;
 
     CountDownLatch consumersDone;
-    LongAdder adderReq = new LongAdder();
 
-    public Consumers(BlockingQueue<QueueRequest> queue, int numConsumers){
+
+    public Consumers(MonitoredQueue<QueueRequest> queue,
+                     int numConsumers,
+                     MetricComputer<QueueRequest> metricComputer)
+    {
         this.processedQueue = queue;
         this.numConsumers = numConsumers;
-        consumersDone = new CountDownLatch(numConsumers);
+        this.consumersDone = new CountDownLatch(numConsumers);
+        this.metricComputer = metricComputer;
     }
 
     public void start(){
+        metricComputer.startAnalyzing();
         for (int i=0; i<numConsumers; i++)
         {
             int id = i;
             Thread.ofVirtual().name("Consumer-" + id).start(
-                    new Consumer(logger, processedQueue, consumersDone, adderReq)
+                    new Consumer(processedQueue, consumersDone, metricComputer)
             );
         }
     }

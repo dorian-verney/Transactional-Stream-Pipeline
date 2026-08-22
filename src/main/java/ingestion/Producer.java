@@ -1,40 +1,36 @@
 package ingestion;
 
 import com.fasterxml.jackson.databind.JsonNode;
-import consumers.applications.PnLCalculator;
+import components.MetricComputer;
+import components.MonitoredQueue;
 import ingestion.stageHandler.*;
 import ingestion.wrapper.QueueRequest;
 import ingestion.wrapper.Transaction;
 import ingestion.wrapper.Wrapper;
-import utils.LoggerFactory;
-import utils.MetricsLogger;
 
-import java.util.concurrent.BlockingQueue;
+
 import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.logging.*;
 
-public class Producer implements Runnable
-{
-    private static final Logger logger = LoggerFactory.create(Producer.class, "Producer.log");
-    private static final MetricsLogger metricsLog = new MetricsLogger(logger);
+public class Producer implements Runnable {
 
-    private final BlockingQueue<String> rawQueue;
-    private final BlockingQueue<QueueRequest> processedQueue;
-
-    private final int processedQueueCapacity;
+    private final MonitoredQueue<String> rawQueue;
+    private final MonitoredQueue<QueueRequest> processedQueue;
 
     private final int numConsumers;
 
-    public Producer(BlockingQueue<String> rawQueue,
-                    BlockingQueue<QueueRequest> processedQueue,
-                    int processedQueueCapacity,
-                    int numConsumers)
+    private final MetricComputer<String> metricComputer;
+
+
+    public Producer(MonitoredQueue<String> rawQueue,
+                    MonitoredQueue<QueueRequest> processedQueue,
+                    int numConsumers,
+                    MetricComputer<String> metricComputer)
     {
         this.rawQueue = rawQueue;
         this.processedQueue = processedQueue;
-        this.processedQueueCapacity = processedQueueCapacity;
         this.numConsumers = numConsumers;
+        this.metricComputer = metricComputer;
     }
 
     public Wrapper<QueueRequest> runChain(Wrapper<String> rawLine) {
@@ -47,11 +43,9 @@ public class Producer implements Runnable
     public void run()
     {
         StringBuilder buffer = new StringBuilder();
-        String line = "";
         int[] depth = {0};
-        int nbReq = 0;
+        metricComputer.startAnalyzing();
         try {
-            long start = System.currentTimeMillis();
             while (true) {
 
                 // TAKE from RAW QUEUE
@@ -62,8 +56,8 @@ public class Producer implements Runnable
                     Wrapper<QueueRequest> req = runChain(new Wrapper<>(buffer.toString()));
 
                     if (!req.isFailed()) {
-                        metricsLog.logIf(processedQueue.size() == processedQueueCapacity,
-                                Level.WARNING, "PROCESSED QUEUE full");
+//                        metricsLog.logIf(processedQueue.isFull(1),
+//                                Level.WARNING, "PROCESSED QUEUE full");
 
                         while (!processedQueue.offer(req.getPayload())) {
                             Thread.sleep(1);
@@ -71,12 +65,7 @@ public class Producer implements Runnable
                     }
                     buffer.setLength(0);
                 }
-
-                nbReq++;
-                final double rate = (double) nbReq / (System.currentTimeMillis() - start);
-                metricsLog.logEvery(nbReq, 100, () ->
-                        String.format("PROD rate=%.2f req/s", rate * 1000)
-                );
+                metricComputer.updateMetric();
             }
         } catch (InterruptedException e) {
             throw new RuntimeException(e);
